@@ -1,32 +1,39 @@
 " init.vim/vimrc
 "time the init script
 let g:initstart = reltime()
-let g:initfirstrun = v:false
+let s:initfirstrun = v:false
 set nocompatible "don't try to be compatible with vi, use vim features
 
-let using_windows = has('win32') || has('win64')
+let g:using_windows = has('win32') || has('win64')
+let g:pathsep = '/'
+if g:using_windows
+    let g:pathsep = '\'
+endif
+
+"get the path to our VIMRC
+let g:VIMRCPath = expand("<sfile>:p:h")
 
 "Get the path prefix depending on the install
 if has('nvim')
-    let pathprefix = stdpath('data')
-elseif using_windows
-    let pathprefix = expand('~/vimfiles')
+    let s:pathprefix = stdpath('data')
+elseif g:using_windows
+    let s:pathprefix = expand('~\vimfiles')
 else
-    let pathprefix = expand('~/.vim')
+    let s:pathprefix = expand('~/.vim')
 endif
 
 "build a string to describe the environment
-let env_desc_str = join([
+let s:env_desc_str = join([
             \ has('nvim') ? 'Running NVIM' : 'Running VIM',
             \ "in",
-            \ using_windows ? 'WINDOWS' : '*NIX',
+            \ g:using_windows ? 'WINDOWS' : '*NIX',
             \ has('gui_running') ? 'GUI' : 'CONSOLE',
             \ ], ' ')
 
 "echo some useful env info into messages - add more by adding to list g:initmsgs
 let g:initmsgs = [
-            \ env_desc_str,
-            \ 'Path Prefix = ' .. pathprefix,
+            \ s:env_desc_str,
+            \ 'Path Prefix = ' .. s:pathprefix,
             \ ]
 
 augroup vimrc
@@ -50,38 +57,39 @@ augroup END
 "==============================================================================
 "where to install vim-plug
 if has('nvim')
-    let vp_local = pathprefix .. '/site/autoload/plug.vim'
+    let s:vp_local = join([s:pathprefix, 'site', 'autoload', 'plug.vim'], g:pathsep)
 else
-    let vp_local = pathprefix .. '/autoload/plug.vim'
+    let s:vp_local = join([s:pathprefix, 'autoload', 'plug.vim'], g:pathsep)
 endif
 
 "where to get vim-plug
-let vp_url = 'https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim'
+let s:vp_url = 'https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim'
 
 "install vim-plug if it isn't already installed in the expected place
-if empty(glob(vp_local))
-    if using_windows
-        silent execute '!powershell -command "iwr -useb' vp_url '| ni' vp_local '-Force"'
+if empty(glob(s:vp_local))
+    if g:using_windows
+        silent execute '!powershell -command "iwr -useb' s:vp_url
+                    \ '| ni' s:vp_local '-Force"'
     else
-        silent execute '!curl -fLo' vp_local '--create-dirs' vp_url
+        silent execute '!curl -fLo' s:vp_local '--create-dirs' s:vp_url
     endif
     autocmd VimEnter * PlugInstall --sync | source $MYVIMRC |
                 \ echom ':source' $MYVIMRC |
                 \ for msg in g:initmsgs | echom '  '..msg | endfor |
                 \ redraw | AirlineRefresh
-    let g:initmsgs += ['Installed vim-plug to '.. vp_local]
-    let g:initfirstrun = v:true
+    let g:initmsgs += ['Installed vim-plug to '.. s:vp_local]
+    let s:initfirstrun = v:true
 endif
 "==============================================================================
 
-let pyvenv = pathprefix .. '/vim_python_venv'
-if !empty(glob(pyvenv..'/pyvenv.cfg'))
-    let initmsgs += ["Python venv exists at: " .. pyvenv]
-    let g:python3_host_prog = pyvenv..'/Scripts/python'
+let s:pyvenv = join([s:pathprefix, 'vim_python_venv'], g:pathsep)
+if !empty(glob(join([s:pyvenv, 'pyvenv.cfg'], g:pathsep)))
+    let initmsgs += ["Python venv exists at: " .. s:pyvenv]
+    let g:python3_host_prog = join([s:pyvenv, 'Scripts', 'python'], g:pathsep)
 endif
-let initmsgs += [has('python3') ? 'PYTHON3 enabled' : 'PYTHON3 _NOT_ enabled']
+let g:initmsgs += [has('python3') ? 'PYTHON3 enabled' : 'PYTHON3 _NOT_ enabled']
 
-call plug#begin(pathprefix .. '/plugged')
+call plug#begin(join([s:pathprefix, 'plugged'], g:pathsep))
 
 "colorschemes/aesthetics
 Plug 'jnurmine/zenburn'
@@ -99,6 +107,7 @@ Plug 'scrooloose/nerdtree'
 Plug 'scrooloose/nerdcommenter'
 Plug 'jiangmiao/auto-pairs'
 Plug 'Konfekt/FastFold'
+Plug 'tpope/vim-fugitive'
 
 "python dev plugins
 Plug 'Vimjas/vim-python-pep8-indent'
@@ -124,8 +133,58 @@ function! StripTrailingWhite()
     call winrestview(l:winview)
 endfunction
 
+function! CheckVIMRCStatus(override)
+    if empty(glob(join([g:VIMRCPath, '.git'], g:pathsep))) || (!a:override &&
+            \ !empty(glob(join([g:VIMRCPath, '.no_vimrc_update'], g:pathsep))))
+        return 0
+    endif
+    execute 'cd' g:VIMRCPath
+    let l:behind = system('git rev-list --count main..origin/main')
+    let l:ahead = system('git rev-list --count origin/main..main')
+    let l:dirty = !empty(system('git status --porcelain'))
+    execute 'cd -'
+    if !l:behind && !l:ahead && !l:dirty    "no difference from origin
+        return 0
+    elseif l:behind && !l:ahead && !l:dirty "origin has an update to pull
+        return 1
+    else "local changes need to be merged
+        return 2
+    endif
+endfunction
+
+function! UpdateVIMRC()
+    if empty(glob(join([g:VIMRCPath, '.git'], g:pathsep)))
+        echom 'No .git local repository. Clone'
+                    \ 'https://github.com/kazdov/vim-setup-jmv to'
+                    \ g:VIMRCPath 'to get started'
+        return
+    endif
+    if !empty(glob(join([g:VIMRCPath, '.no_vimrc_update'], g:pathsep)))
+        let l:update_choice = confirm('Override and update vimrc?',
+                    \ "&No\n&Once\n&Always Update")
+        if l:update_choice <= 1
+            echom 'Aborted VIMRC update'
+            return
+        elseif l:update_choice == 3
+            let l:del = delete(join([g:VIMRCPath, '.no_vimrc_update'], g:pathsep))
+            echom 'Re-enabled VIMRC update'
+        endif
+    endif
+    let l:vimrc_status = CheckVIMRCStatus(v:true)
+    if !l:vimrc_status
+        echom 'VIMRC is already synced'
+        return
+    elseif l:vimrc_status == 2
+        echom 'VIMRC is locally updated - use Git to resolve and sync to origin'
+        return
+    else
+        echom 'Updating VIMRC and sourcing again'
+        return | source $MYVIMRC
+    endif
+endfunction
+
 "If our first run, don't bother setting anything that requires the plugins
-if g:initfirstrun
+if s:initfirstrun
     let g:initmsgs += ['Init Duration = ' ..
                 \ reltimestr(reltime(g:initstart)) .. ' seconds']
     finish
@@ -152,7 +211,7 @@ if has('clipboard')
     let g:initmsgs += ['CLIPBOARD supported, set to "unnamed" register']
 else
     let g:initmsgs += ['No CLIPBOARD support']
-end
+endif
 
 "Aesthetic settings
 set termguicolors
@@ -195,5 +254,9 @@ inoremap kj <Esc>
 tmap <Esc> <C-\><C-n>
 tmap kj <Esc>
 
+"Check whether there are updates to VIMRC
+let s:vimrcsync = CheckVIMRCStatus(0)
+
 "capture the initialization duration
 let g:initmsgs += ['Init Duration = ' .. reltimestr(reltime(g:initstart)) .. ' seconds']
+let g:initmsgs += s:vimrcsync ? ['VIMRC out of sync, use :UpdateVIMRC to update'] : []
