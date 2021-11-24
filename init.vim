@@ -110,18 +110,20 @@ Plug 'Konfekt/FastFold'
 Plug 'tpope/vim-fugitive'
 
 "python dev plugins
-Plug 'Vimjas/vim-python-pep8-indent'
-Plug 'dense-analysis/ale'
-Plug 'tmhedberg/SimpylFold'
+if has('python3')
+    Plug 'Vimjas/vim-python-pep8-indent'
+    Plug 'dense-analysis/ale'
+    Plug 'tmhedberg/SimpylFold'
 
-if has('nvim')
-  Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
-else
-  Plug 'Shougo/deoplete.nvim'
-  Plug 'roxma/nvim-yarp'
-  Plug 'roxma/vim-hug-neovim-rpc'
+    if has('nvim')
+      Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
+    else
+      Plug 'Shougo/deoplete.nvim'
+      Plug 'roxma/nvim-yarp'
+      Plug 'roxma/vim-hug-neovim-rpc'
+    endif
+    Plug 'deoplete-plugins/deoplete-jedi'
 endif
-Plug 'deoplete-plugins/deoplete-jedi'
 
 call plug#end()
 
@@ -259,4 +261,4 @@ let s:vimrcsync = CheckVIMRCStatus(0)
 
 "capture the initialization duration
 let g:initmsgs += ['Init Duration = ' .. reltimestr(reltime(g:initstart)) .. ' seconds']
-let g:initmsgs += s:vimrcsync ? ['VIMRC out of sync, use :UpdateVIMRC to update'] : []
+let g:initmsgs += s:vimrcsync ? ['VIMRC out of sync, use ":call UpdateVIMRC()" to update'] : []
