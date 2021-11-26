@@ -241,6 +241,7 @@ nnoremap <C-space> zi
 
 "toggle line numbers
 nnoremap <leader>n :set number!<CR>
+nnoremap <leader>rn :set relativenumber!<CR>
 
 "clear search highlights
 nnoremap <leader>h :noh<CR>
