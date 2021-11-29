@@ -113,11 +113,11 @@ Plug 'Konfekt/FastFold'
 Plug 'tpope/vim-fugitive'
 
 "python dev plugins
-if has('python3')
-    Plug 'Vimjas/vim-python-pep8-indent'
-    Plug 'dense-analysis/ale'
-    Plug 'tmhedberg/SimpylFold'
+Plug 'Vimjas/vim-python-pep8-indent'
+Plug 'dense-analysis/ale'
+Plug 'tmhedberg/SimpylFold'
 
+if has('python3') && !g:raspberrypi
     if has('nvim')
       Plug 'Shougo/deoplete.nvim', { 'do': ':UpdateRemotePlugins' }
     else
@@ -126,6 +126,14 @@ if has('python3')
       Plug 'roxma/vim-hug-neovim-rpc'
     endif
     Plug 'deoplete-plugins/deoplete-jedi'
+endif
+
+"markdown plugins
+Plug 'godlygeek/tabular'
+Plug 'plasticboy/vim-markdown'
+Plug 'clarke/vim-renumber'
+if !g:raspberrypi
+    Plug 'iamcco/markdown-preview.nvim', { 'do': { -> mkdp#util#install() }, 'for': ['markdown', 'vim-plug']}
 endif
 
 call plug#end()
@@ -204,6 +212,7 @@ filetype plugin indent on "ensure that filetypes trigger contextual behavior
 syntax on  "ensure syntax highlighting is on
 set title  "Set the title of the window to filename
 set number "Turn on line numbers
+set relativenumber "Turn on relative line numbers
 "Set sane tab behavior for python
 set tabstop=8 softtabstop=4 shiftwidth=4 expandtab smarttab
 set autoindent "Indent to the same as the previous line
@@ -235,6 +244,23 @@ let g:deoplete#enable_at_startup = 1
 " deoplete tab-complete
 inoremap <expr><tab> pumvisible() ? "\<c-n>" : "\<tab>"
 
+"markdown preview settings
+" set to 1, the nvim will auto close current preview window when change
+" from markdown buffer to another buffer
+" default: 1
+let g:mkdp_auto_close = 0
+" set to 1, the MarkdownPreview command can be use for all files,
+" by default it can be use in markdown file
+" default: 0
+let g:mkdp_command_for_global = 1
+" use a custom markdown style must be absolute path
+" like '/Users/username/markdown.css' or expand('~/markdown.css')
+let g:mkdp_markdown_css = ''
+" recognized filetypes
+" these filetypes will have MarkdownPreview... commands
+let g:mkdp_filetypes = ['markdown']
+
+
 "General User Mappings
 let mapleader=',' "use comma to start user key mappings
 
@@ -255,7 +281,6 @@ nnoremap <leader>h :noh<CR>
 
 "clear trailing whitespace
 nnoremap <leader>w :call StripTrailingWhite()<CR>
-
 
 "map kj for insert mode to go to Normal
 inoremap kj <Esc>
