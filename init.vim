@@ -4,10 +4,12 @@ let g:initstart = reltime()
 let s:initfirstrun = v:false
 set nocompatible "don't try to be compatible with vi, use vim features
 
-let g:using_windows = has('win32') || has('win64')
-let g:pathsep = '/'
-if g:using_windows
+if has("win32")
     let g:pathsep = '\'
+    let g:raspberrypi = v:false
+else
+    let g:pathsep = '/'
+    let g:raspberrypi = system("uname -m") == "armv7l"
 endif
 
 "get the path to our VIMRC
@@ -16,7 +18,7 @@ let g:VIMRCPath = expand("<sfile>:p:h")
 "Get the path prefix depending on the install
 if has('nvim')
     let s:pathprefix = stdpath('data')
-elseif g:using_windows
+elseif has("win32")
     let s:pathprefix = expand('~\vimfiles')
 else
     let s:pathprefix = expand('~/.vim')
@@ -26,9 +28,10 @@ endif
 let s:env_desc_str = join([
             \ has('nvim') ? 'Running NVIM' : 'Running VIM',
             \ "in",
-            \ g:using_windows ? 'WINDOWS' : '*NIX',
+            \ has("win32") ? 'WINDOWS' :
+            \       join(['*NIX', g:raspberrypi ? " RASPBERRYPI" : ""], ''),
             \ has('gui_running') ? 'GUI' : 'CONSOLE',
-            \ ], ' ')
+            \ ])
 
 "echo some useful env info into messages - add more by adding to list g:initmsgs
 let g:initmsgs = [
@@ -67,7 +70,7 @@ let s:vp_url = 'https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.
 
 "install vim-plug if it isn't already installed in the expected place
 if empty(glob(s:vp_local))
-    if g:using_windows
+    if has("win32")
         silent execute '!powershell -command "iwr -useb' s:vp_url
                     \ '| ni' s:vp_local '-Force"'
     else
@@ -181,7 +184,11 @@ function! UpdateVIMRC()
         return
     else
         echom 'Updating VIMRC and sourcing again'
-        return | source $MYVIMRC
+        execute 'Git pull' fnamemodify($MYVIMRC,':h:S')
+        source $MYVIMRC
+        PlugInstall --sync
+        source $MYVIMRC
+        return
     endif
 endfunction
 
