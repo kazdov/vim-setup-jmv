@@ -1,7 +1,9 @@
 " init.vim/vimrc
 "time the init script
 let g:initstart = reltime()
-let s:initfirstrun = v:false
+if !exists("g:initplugins")
+    let g:initplugins = v:false
+endif
 set nocompatible "don't try to be compatible with vi, use vim features
 
 if has("win32")
@@ -81,7 +83,7 @@ if empty(glob(s:vp_local))
                 \ for msg in g:initmsgs | echom '  '..msg | endfor |
                 \ redraw | AirlineRefresh
     let g:initmsgs += ['Installed vim-plug to '.. s:vp_local]
-    let s:initfirstrun = v:true
+    let g:initplugins = v:true
 endif
 "==============================================================================
 
@@ -139,6 +141,14 @@ endif
 
 call plug#end()
 
+"If adding new plugins don't bother setting anything that requires the plugins
+if g:initplugins
+    let g:initplugins = v:false
+    let g:initmsgs += ['Init Plugin Duration = ' ..
+                \ reltimestr(reltime(g:initstart)) .. ' seconds']
+    finish
+endif
+
 "Function definition
 "Clear trailing whitespace, save window view before execution
 function! StripTrailingWhite()
@@ -153,6 +163,7 @@ function! CheckVIMRCStatus(override)
         return 0
     endif
     execute 'cd' g:VIMRCPath
+    let l:update = system('git remote update')
     let l:behind = system('git rev-list --count main..origin/main')
     let l:ahead = system('git rev-list --count origin/main..main')
     let l:dirty = !empty(system('git status --porcelain'))
@@ -166,46 +177,55 @@ function! CheckVIMRCStatus(override)
     endif
 endfunction
 
-function! UpdateVIMRC()
-    if empty(glob(join([g:VIMRCPath, '.git'], g:pathsep)))
-        echom 'No .git local repository. Clone'
-                    \ 'https://github.com/kazdov/vim-setup-jmv to'
-                    \ g:VIMRCPath 'to get started'
-        return
-    endif
-    if !empty(glob(join([g:VIMRCPath, '.no_vimrc_update'], g:pathsep)))
-        let l:update_choice = confirm('Override and update vimrc?',
-                    \ "&No\n&Once\n&Always Update")
-        if l:update_choice <= 1
-            echom 'Aborted VIMRC update'
-            return
-        elseif l:update_choice == 3
-            let l:del = delete(join([g:VIMRCPath, '.no_vimrc_update'], g:pathsep))
-            echom 'Re-enabled VIMRC update'
-        endif
-    endif
-    let l:vimrc_status = CheckVIMRCStatus(v:true)
-    if !l:vimrc_status
-        echom 'VIMRC is already synced'
-        return
-    elseif l:vimrc_status == 2
-        echom 'VIMRC is locally updated - use Git to resolve and sync to origin'
-        return
-    else
-        echom 'Updating VIMRC and sourcing again'
-        execute 'Git pull' fnamemodify($MYVIMRC,':h:S')
-        source $MYVIMRC
-        PlugInstall --sync
-        source $MYVIMRC
-        return
+function! CheckVIMRCStatusAsync(timer)
+    let l:status = CheckVIMRCStatus(v:false)
+    if l:status == 1
+        echom "Update to VIMRC available; run :UpdateVIMRC to pull from remote"
+    elseif l:status == 2
+        echom "Local VIMRC has updates; use Git to merge, commit, and push to remote"
     endif
 endfunction
 
-"If our first run, don't bother setting anything that requires the plugins
-if s:initfirstrun
-    let g:initmsgs += ['Init Duration = ' ..
-                \ reltimestr(reltime(g:initstart)) .. ' seconds']
-    finish
+if !exists("*UpdateVIMRC")  "This sources $MYVIMRC directly; only define if absent
+    function! UpdateVIMRC()
+        if empty(glob(join([g:VIMRCPath, '.git'], g:pathsep)))
+            echom 'No .git local repository. Clone'
+                        \ 'https://github.com/kazdov/vim-setup-jmv to'
+                        \ g:VIMRCPath 'to get started'
+            return
+        endif
+        if !empty(glob(join([g:VIMRCPath, '.no_vimrc_update'], g:pathsep)))
+            let l:update_choice = confirm('Override and update vimrc?',
+                        \ "&No\n&Once\n&Always Update")
+            if l:update_choice <= 1
+                echom 'Aborted VIMRC update'
+                return
+            elseif l:update_choice == 3
+                let l:del = delete(join([g:VIMRCPath, '.no_vimrc_update'], g:pathsep))
+                echom 'Re-enabled VIMRC update'
+            endif
+        endif
+        let l:vimrc_status = CheckVIMRCStatus(v:true)
+        if !l:vimrc_status
+            echom 'VIMRC is already synced'
+            return
+        elseif l:vimrc_status == 2
+            echom 'VIMRC is locally updated - use Git to resolve and sync to origin'
+            return
+        else
+            echom 'Updating VIMRC and sourcing again'
+            execute 'cd' g:VIMRCPath
+            execute 'Git pull'
+            execute 'cd -'
+            let g:initplugins = v:true
+            autocmd SourcePost $MYVIMRC ++once PlugInstall --sync | source $MYVIMRC |
+                        \ echom ':source' $MYVIMRC |
+                        \ for msg in g:initmsgs | echom '  '..msg | endfor |
+                        \ redraw | AirlineRefresh
+            return
+        endif
+    endfunction
+    command! UpdateVIMRC call UpdateVIMRC()
 endif
 
 "Vim settings: reiterates default in many cases, but ensure consistency
@@ -291,8 +311,7 @@ tmap <Esc> <C-\><C-n>
 tmap kj <Esc>
 
 "Check whether there are updates to VIMRC
-let s:vimrcsync = CheckVIMRCStatus(0)
+call timer_start(100, function('CheckVIMRCStatusAsync'))
 
 "capture the initialization duration
 let g:initmsgs += ['Init Duration = ' .. reltimestr(reltime(g:initstart)) .. ' seconds']
-let g:initmsgs += s:vimrcsync ? ['VIMRC out of sync, use ":call UpdateVIMRC()" to update'] : []
