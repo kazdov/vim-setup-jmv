@@ -277,7 +277,7 @@ let mapleader=',' "use comma to start user key mappings
 "open and close fern window
 nmap <leader>D :Fern . -drawer -toggle<CR>
 nmap <C-\> <leader>D
-nmap <leader>d :Fern .<CR>
+nmap <leader>d :Fern . -opener=vsplit<CR>
 nmap \ <leader>d
 
 "open and close individual, and all folds with space combos
@@ -294,13 +294,23 @@ nnoremap <leader>h :noh<CR>
 "clear trailing whitespace
 nnoremap <leader>w :call StripTrailingWhite()<CR>
 
-"map kj for insert mode to go to Normal
+"map kj for insert/visual mode to go to Normal
 inoremap kj <Esc>
+vnoremap kj <Esc>
 
 "map Esc for terminal mode to go to Normal
 tmap <Esc> <C-\><C-n>
 tmap kj <Esc>
 
+"map Alt-j and Alt-k to move lines/blocks up and down
+nnoremap <A-j> :m .+1<CR>==
+nnoremap <A-k> :m .-2<CR>==
+inoremap <A-j> <Esc>:m .+1<CR>==gi
+inoremap <A-k> <Esc>:m .-2<CR>==gi
+vnoremap <A-j> :m '>+1<CR>gv=gv
+vnoremap <A-k> :m '<-2<CR>gv=gv
+
+"wrap things up
 "Check whether there are updates to VIMRC
 call timer_start(100, function('CheckVIMRCStatusAsync'))
 
