@@ -205,25 +205,16 @@ if !exists("*UpdateVIMRC")  "This sources $MYVIMRC directly; only define if abse
                 echom 'Re-enabled VIMRC update'
             endif
         endif
-        let l:vimrc_status = CheckVIMRCStatus(v:true)
-        if !l:vimrc_status
-            echom 'VIMRC is already synced'
-            return
-        elseif l:vimrc_status == 2
-            echom 'VIMRC is locally updated - use Git to resolve and sync to origin'
-            return
-        else
-            echom 'Updating VIMRC and sourcing again'
-            execute 'cd' g:VIMRCPath
-            execute 'Git pull'
-            execute 'cd -'
-            let g:initplugins = v:true
-            autocmd SourcePost $MYVIMRC ++once PlugInstall --sync | source $MYVIMRC |
-                        \ echom ':source' $MYVIMRC |
-                        \ for msg in g:initmsgs | echom '  '..msg | endfor |
-                        \ redraw | AirlineRefresh
-            return
-        endif
+        echom 'Updating VIMRC and sourcing again'
+        execute 'cd' g:VIMRCPath
+        execute 'Git pull'
+        execute 'cd -'
+        let g:initplugins = v:true
+        autocmd SourcePost $MYVIMRC ++once PlugInstall --sync | source $MYVIMRC |
+                    \ echom ':source' $MYVIMRC |
+                    \ for msg in g:initmsgs | echom '  '..msg | endfor |
+                    \ redraw | AirlineRefresh
+        source $MYVIMRC
     endfunction
     command! UpdateVIMRC call UpdateVIMRC()
 endif
