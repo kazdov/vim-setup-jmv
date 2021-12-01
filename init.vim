@@ -106,7 +106,8 @@ Plug 'vim-airline/vim-airline'
 Plug 'vim-airline/vim-airline-themes'
 
 "functional plugins
-Plug 'scrooloose/nerdtree'
+Plug 'lambdalisue/fern.vim' | Plug 'antoinemadec/FixCursorHold.nvim'
+Plug 'lambdalisue/fern-git-status.vim'
 Plug 'scrooloose/nerdcommenter'
 Plug 'jiangmiao/auto-pairs'
 Plug 'Konfekt/FastFold'
@@ -236,8 +237,6 @@ set termguicolors
 color molokai
 
 " Plugin settings
-" NERDTree
-let NerdTreeShowHidden=1
 
 " Deoplete settings
 let g:deoplete#enable_at_startup = 1
@@ -264,8 +263,10 @@ let g:mkdp_filetypes = ['markdown']
 "General User Mappings
 let mapleader=',' "use comma to start user key mappings
 
-"open and close NERDTree window
-nmap <leader>d :NERDTreeToggle<CR>
+"open and close fern window
+nmap <leader>D :Fern . -drawer -toggle<CR>
+nmap <C-\> <leader>D
+nmap <leader>d :Fern .<CR>
 nmap \ <leader>d
 
 "open and close individual, and all folds with space combos
