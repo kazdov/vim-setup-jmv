@@ -54,7 +54,9 @@ augroup vimrc
                 \ echom ':source' $MYVIMRC |
                 \ for msg in g:initmsgs | echom '  '..msg | endfor |
                 \ redraw | AirlineRefresh
-    "remove trailing whitespace on save
+    "remove trailing whitespace on save; will not do if b:noStripTrailingWhite
+    "is set
+    autocmd Filetype markdown let b:noStripTrailingWhite = v:true
     autocmd BufWritePre * call StripTrailingWhite()
 augroup END
 
@@ -152,6 +154,9 @@ endif
 "Function definition
 "Clear trailing whitespace, save window view before execution
 function! StripTrailingWhite()
+    if exists("b:noStripTrailingWhite")
+        return
+    endif
     let l:winview = winsaveview()
     silent! %s/\s\+$//
     call winrestview(l:winview)
